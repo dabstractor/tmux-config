@@ -26,11 +26,14 @@ elif tmux display-message -p '#{pane_in_mode}' 2>/dev/null | grep -q '^1$'; then
     tmux set -g pane-active-border-style "fg=$COPY_MODE_PANE_COLOR,bg=$COPY_MODE_PANE_COLOR"
     tmux set -g status-bg "$COPY_MODE_COLOR"
 
+    tmux set -g @active_pane_in_mode "1"
     # Schedule this script to run again in 30ms
-    tmux run-shell -b "sleep 0.03 && $0"
+    # tmux run-shell -b "sleep 0.03 && $0"
 else
     # Normal mode
     tmux set -g window-active-style "$WINDOW_ACTIVE_STYLE_NORMAL"
     tmux set -g pane-active-border-style "fg=$NORMAL_PANE_COLOR,bg=$NORMAL_PANE_COLOR"
     tmux set -g status-bg $NORMAL_COLOR
+
+    tmux set -g @active_pane_in_mode "0"
 fi
