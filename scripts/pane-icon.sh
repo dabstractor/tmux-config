@@ -1,4 +1,5 @@
 #!/bin/bash
+
 count=$(($(tmux display -p '#{window_panes}') - 1))
 case $count in
   1) echo "󰼏" ;;
