@@ -18,13 +18,35 @@ ZOOM_MODE_COLOR=$(tmux show-option -gv @zoom_mode_color)
 ZOOM_MODE_PANE_COLOR=$(tmux show-option -gv @zoom_mode_pane_color)
 WINDOW_ACTIVE_STYLE_ZOOM=$(tmux show-option -gv @zoom_mode_window_active_style)
 
+# Get active pane weight configuration
+ACTIVE_PANE_WEIGHT=$(tmux show-option -gv @active_pane_weight 2>/dev/null)
+ACTIVE_PANE_WEIGHT=${ACTIVE_PANE_WEIGHT:-normal}
+
+# Pane border lines configuration
+PREFIX_BORDER_LINES=$(tmux show-option -gv @prefix_border_lines 2>/dev/null)
+PREFIX_BORDER_LINES=${PREFIX_BORDER_LINES:-single}
+
+# Extra-bold mode configurations
+PREFIX_MODE_EXTRA_BOLD=$(tmux show-option -gv @prefix_mode_extra_bold 2>/dev/null)
+PREFIX_MODE_EXTRA_BOLD=${PREFIX_MODE_EXTRA_BOLD:-0}
+COPY_MODE_EXTRA_BOLD=$(tmux show-option -gv @copy_mode_extra_bold 2>/dev/null)
+COPY_MODE_EXTRA_BOLD=${COPY_MODE_EXTRA_BOLD:-0}
+
 # Check if this is a special mode activation
 MODE="$1"
 
 if [ "$MODE" = "activate" ]; then
     # Prefix activation: set colors FIRST, then switch-client to avoid lag
+    # Determine bg based on prefix_mode_extra_bold
+    if [ "$PREFIX_MODE_EXTRA_BOLD" = "1" ]; then
+        PREFIX_PANE_BG="$HIGHLIGHT_COLOR"
+    else
+        PREFIX_PANE_BG="$NORMAL_COLOR"
+    fi
+
     tmux set -g status-bg "$HIGHLIGHT_COLOR" \; \
-         set -g pane-active-border-style "fg=$HIGHLIGHT_COLOR,bg=$HIGHLIGHT_COLOR" \; \
+         set -g pane-active-border-style "fg=$HIGHLIGHT_COLOR,bg=$PREFIX_PANE_BG" \; \
+         set -g pane-border-lines "$PREFIX_BORDER_LINES" \; \
          set -g window-active-style "$WINDOW_ACTIVE_STYLE_HIGHLIGHT" \; \
          set -g @active_pane_in_mode "0" \; \
          set -g @current_display_mode "prefix" \; \
@@ -52,28 +74,66 @@ read -r CLIENT_PREFIX PANE_IN_MODE WINDOW_ZOOMED <<< "$(tmux display-message -p 
 if [ "$CLIENT_PREFIX" = "1" ]; then
     NEW_MODE="prefix"
     STATUS_BG="$HIGHLIGHT_COLOR"
-    PANE_COLOR="$HIGHLIGHT_COLOR"
+    PANE_FG="$HIGHLIGHT_COLOR"
+    # Determine bg based on prefix_mode_extra_bold
+    if [ "$PREFIX_MODE_EXTRA_BOLD" = "1" ]; then
+        PANE_BG="$HIGHLIGHT_COLOR"
+    else
+        PANE_BG="$NORMAL_COLOR"
+    fi
+    PANE_BORDER_LINES="$PREFIX_BORDER_LINES"
     WINDOW_STYLE="$WINDOW_ACTIVE_STYLE_HIGHLIGHT"
     ACTIVE_IN_MODE="0"
     ACTIVE_ZOOMED="$WINDOW_ZOOMED"
 elif [ "$PANE_IN_MODE" = "1" ]; then
     NEW_MODE="copy"
     STATUS_BG="$COPY_MODE_COLOR"
-    PANE_COLOR="$COPY_MODE_PANE_COLOR"
+    PANE_FG="$COPY_MODE_PANE_COLOR"
+    # Determine bg based on copy_mode_extra_bold
+    if [ "$COPY_MODE_EXTRA_BOLD" = "1" ]; then
+        PANE_BG="$COPY_MODE_PANE_COLOR"
+    else
+        PANE_BG="$NORMAL_COLOR"
+    fi
+    PANE_BORDER_LINES="double"
     WINDOW_STYLE="$WINDOW_ACTIVE_STYLE_COPY"
     ACTIVE_IN_MODE="1"
     ACTIVE_ZOOMED="$WINDOW_ZOOMED"
 elif [ "$WINDOW_ZOOMED" = "1" ]; then
     NEW_MODE="zoom"
     STATUS_BG="$ZOOM_MODE_COLOR"
-    PANE_COLOR="$ZOOM_MODE_PANE_COLOR"
+    PANE_FG="$ZOOM_MODE_PANE_COLOR"
+    # Determine bg based on active_pane_weight
+    if [ "$ACTIVE_PANE_WEIGHT" = "extra-bold" ]; then
+        PANE_BG="$ZOOM_MODE_PANE_COLOR"
+    else
+        PANE_BG="$NORMAL_COLOR"
+    fi
+    # Determine border lines based on active_pane_weight
+    if [ "$ACTIVE_PANE_WEIGHT" = "normal" ]; then
+        PANE_BORDER_LINES="single"
+    else
+        PANE_BORDER_LINES="heavy"
+    fi
     WINDOW_STYLE="$WINDOW_ACTIVE_STYLE_ZOOM"
     ACTIVE_IN_MODE="0"
     ACTIVE_ZOOMED="1"
 else
     NEW_MODE="normal"
     STATUS_BG="$NORMAL_COLOR"
-    PANE_COLOR="$NORMAL_PANE_COLOR"
+    PANE_FG="$NORMAL_PANE_COLOR"
+    # Determine bg based on active_pane_weight
+    if [ "$ACTIVE_PANE_WEIGHT" = "extra-bold" ]; then
+        PANE_BG="$NORMAL_PANE_COLOR"
+    else
+        PANE_BG="$NORMAL_COLOR"
+    fi
+    # Determine border lines based on active_pane_weight
+    if [ "$ACTIVE_PANE_WEIGHT" = "normal" ]; then
+        PANE_BORDER_LINES="single"
+    else
+        PANE_BORDER_LINES="heavy"
+    fi
     WINDOW_STYLE="$WINDOW_ACTIVE_STYLE_NORMAL"
     ACTIVE_IN_MODE="0"
     ACTIVE_ZOOMED="0"
@@ -85,7 +145,8 @@ CURRENT_MODE=$(tmux show-option -gv @current_display_mode 2>/dev/null)
 if [ "$NEW_MODE" != "$CURRENT_MODE" ]; then
     # Batch ALL tmux set commands into single call - eliminates multiple process spawns
     tmux set -g status-bg "$STATUS_BG" \; \
-         set -g pane-active-border-style "fg=$PANE_COLOR,bg=$PANE_COLOR" \; \
+         set -g pane-active-border-style "fg=$PANE_FG,bg=$PANE_BG" \; \
+         set -g pane-border-lines "$PANE_BORDER_LINES" \; \
          set -g window-active-style "$WINDOW_STYLE" \; \
          set -g @active_pane_in_mode "$ACTIVE_IN_MODE" \; \
          set -g @active_window_zoomed "$ACTIVE_ZOOMED" \; \

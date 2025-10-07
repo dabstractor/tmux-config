@@ -1,7 +1,12 @@
 #!/bin/bash
+# get window param if available, default to current window
+if [ -n "$1" ]; then
+  pane_count=$(tmux display-message -p -t ":$1" "#{window_panes}")
+else
+  pane_count=$(tmux display-message -p "#{window_panes}")
+fi
 
-count=$(($(tmux display -p '#{window_panes}') - 1))
-case $count in
+case $pane_count in
   1) echo "󰼏" ;;
   2) echo "󰼐" ;;
   3) echo "󰼑" ;;
