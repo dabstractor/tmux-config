@@ -57,7 +57,7 @@ if [ "$width" -eq "$screen_width" ] && [ "$height" -eq "$screen_height" ]; then
     fi
 else
     # Use aspect ratio to determine split direction
-    if [ "$width" -gt $((height * 5)) ]; then
+    if [ "$width" -gt $((height * 4)) ]; then
         tmux split-window -h -c "#{pane_current_path}"
         if [ "$ssh_detected" -eq 0 ]; then
             tmux send-keys "$ssh_command" Enter
