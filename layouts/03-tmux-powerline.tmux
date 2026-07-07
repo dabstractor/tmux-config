@@ -1,15 +1,9 @@
-# Layout 3 — erikw/tmux-powerline (the real plugin you named).
-# Cloned to plugins/tmux-powerline/. It runs out-of-the-box with its default
-# theme. Internals: main.tmux sets status-left/status-right to
-#   #(~/.../powerline.sh left|right)
-# i.e. shell-executed per render, AND it overrides status-style itself.
-# This is the HEAVIEST integration: a foreign plugin that re-asserts
-# status-style + fills every segment with explicit #[bg=colourNNN]. Tubular's
-# mode coloring is effectively overwritten wherever tmux-powerline paints
-# (which is everywhere). Reports the "full takeover" compatibility case.
-source-file ~/.config/tmux/layouts/_tubular-colors.tmux
-run-shell  ~/.config/tmux/plugins/tubular-tmux/tubular.tmux
-
-# Use the default theme (no ~/.tmux-powerline config needed).
-# main.tmux reads TMUX_POWERLINE_DIR_HOME from BASH_SOURCE, so run it directly.
+# Layout 03 — erikw/tmux-powerline (a real foreign statusline plugin),
+# DYNAMICALLY themed. tubular-powerline-theme-gen.sh converts the resolved
+# tubular palette (@_tubular_*, populated by the applier before this file is
+# sourced) into a generated tmux-powerline theme (~/.config/tmux-powerline/,
+# marker-guarded). Powerline re-sources its theme on every render, so cycling
+# tubular themes repaints powerline's segments live. main.tmux reads
+# TMUX_POWERLINE_DIR_HOME from BASH_SOURCE, so run it directly.
+run-shell ~/.config/tmux/scripts/tubular-powerline-theme-gen.sh
 run-shell ~/.config/tmux/plugins/tmux-powerline/main.tmux
