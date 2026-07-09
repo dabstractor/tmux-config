@@ -6,13 +6,17 @@
 # pid; exits 1 otherwise. The binding then passes the key through, else enters
 # copy-mode (scrollback).
 #
-# Two situations this catches (both are an app nested under the pane's shell,
+# Three situations this catches (all are an app nested under the pane's shell,
 # invisible to tmux's own signals):
 #   - inline pickers: fzf/sk/gum/fzy/peco in --height / Ctrl-R / tab mode, which
 #     tmux misreports as the shell (cmd=zsh, alt=0).
 #   - editors launched by another app: e.g. claude's Ctrl+G opens nvim, but tmux
 #     still reports the pane as claude (cmd=claude, alt=1) -- so without this
 #     check, claude's alt-screen exception would force copy-mode over the editor.
+#   - pagers that don't grab the alt screen: `git diff`/`git log`/`git show`/`git
+#     blame` (paged via `delta` -> `less` here), `man`, etc. run in the normal
+#     screen buffer (alt=0), so without this check Up would enter copy-mode
+#     instead of scrolling the pager.
 #
 # Why /proc/<pid>/task/<pid>/children instead of pstree: the kernel maintains
 # that file, so we walk only this pane's subtree instead of scanning all of
@@ -29,6 +33,8 @@ while [ -n "$stack" ]; do
         fzf|sk|gum|fzy|peco) exit 0 ;;
         # editors (e.g. launched under claude via Ctrl+G)
         nvim|vim|vi|helix|hx|emacs|micro|nano|code) exit 0 ;;
+        # pagers: git diff/log/show/blame (delta->less), man, etc.
+        less|more|most|moar|bat|batcat|delta) exit 0 ;;
     esac
     children="$(cat /proc/"$node"/task/"$node"/children 2>/dev/null)"
     [ -n "$children" ] && stack="$children $stack"
