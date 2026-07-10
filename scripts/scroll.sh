@@ -22,9 +22,15 @@
 # that file, so we walk only this pane's subtree instead of scanning all of
 # /proc -- ~5ms vs ~200ms for pstree on a busy system.
 #
-# Usage: scroll.sh <pane_pid>
+# Usage: scroll.sh <pane_pid> [raw_detect]
+#   raw_detect=1 -> after the explicit `case` below misses, ALSO pass Up through
+#   when the pane's tty is in raw mode (ICANON off), i.e. any app actively reading
+#   keystrokes. Only the non-alt-screen branch passes this; the alt-screen/
+#   claude branch omits it on purpose (claude is itself raw, and we want
+#   copy-mode over its UI unless a nested editor/picker matched above).
 # Add more apps to the `case` below.
 pid="${1:?}"
+raw_detect="${2:-}"   # =1 enables raw-mode fallback (non-alt-screen branch only)
 stack="$pid"
 while [ -n "$stack" ]; do
     node="${stack%% *}"; stack="${stack#"$node"}"; stack="${stack# }"
@@ -39,4 +45,20 @@ while [ -n "$stack" ]; do
     children="$(cat /proc/"$node"/task/"$node"/children 2>/dev/null)"
     [ -n "$children" ] && stack="$children $stack"
 done
+
+# 2nd line of defense (non-alt-screen branch, opt-in via 2nd arg == 1): if no
+# known app matched above, pass Up through when the pane's tty is in raw mode
+# (ICANON off) -- i.e. any app actively reading keystrokes (vim, less, fzf,
+# htop, tig, ssh -> remote vim, ...). Prompts / builds / streaming logs keep the
+# tty canonical, so they still fall through to copy-mode. CAVEAT: full non-alt
+# TUIs like `pi` are ALSO raw and run under the shell just like `less`, so this
+# can't tell them apart -- it steals pi's Up and breaks its copy-mode scrollback.
+# Hence @scroll_raw_detect defaults to 0. Opening the slave pty only does a
+# non-destructive TCGETS (read termios), so it won't disturb the app.
+if [ "$raw_detect" = 1 ]; then
+    tty=$(readlink /proc/"$pid"/fd/0 2>/dev/null)
+    if [ -c "$tty" ] && stty -a < "$tty" 2>/dev/null | grep -qiE '(^| )-icanon( |$)'; then
+        exit 0
+    fi
+fi
 exit 1
